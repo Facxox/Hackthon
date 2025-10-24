@@ -11,7 +11,7 @@ function extractText(payload) {
   return parts.map((part) => part.text).filter(Boolean).join('\n');
 }
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST']);
     res.status(405).json({ error: 'Metodo no permitido' });
@@ -75,4 +75,4 @@ export default async function handler(req, res) {
     console.error('Fallo al contactar Gemini:', error);
     res.status(502).json({ error: 'Fallo al contactar Gemini' });
   }
-}
+};
