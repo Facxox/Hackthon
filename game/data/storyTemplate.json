@@ -1,0 +1,117 @@
+{
+  "fixed": {
+  "premise": "Arturo atrapado en su mente tras brote psicotico",
+  "trauma": "Accidente domestico - murieron esposa e hija",
+    "objective": "Reconstruir memorias y aceptar culpa"
+  },
+  "variable": {
+    "traumaCause": "[AI: estufa/auto/gas/otro]",
+    "profession": "[AI: contable/ingeniero/maestro]",
+    "wifeName": "[AI]",
+    "daughterName": "[AI]",
+    "daughterAge": "[AI: 5-8]"
+  },
+  "npcs": {
+    "laNina": {
+      "fixed": {
+        "role": "Guia silenciosa",
+        "appearance": "Vestido amarillo, no habla",
+        "behavior": "Aparece/desaparece, rie o llora"
+      },
+      "variable": {
+        "physicalDetails": "[AI: pelo, ojos, etc]",
+        "laughType": "[AI: descripcion de risa]"
+      },
+      "dialogues": {
+        "act1": "[AI: momento primera aparicion]",
+        "act3": "[AI: escena final abrazo]"
+      }
+    },
+    "elCritico": {
+      "fixed": {
+        "role": "Antagonista - la culpa",
+        "appearance": "Sombra parecida a Arturo",
+        "voice": "Voz de Arturo distorsionada",
+        "cannotBeKilled": true
+      },
+      "variable": {
+  "tone": "[AI: sarcastico/furioso/melancolico]"
+      },
+      "dialogues": {
+        "act1_whispers": [
+          "[AI: susurro sobre culpa]",
+          "Tu la dejaste sola. Recuerdas?"
+        ],
+        "act2_chase": [
+          "[AI: grito sobre puerta/estufa]",
+          "[AI: acusacion especifica]"
+        ],
+        "act3_final": "[AI: confrontacion final]"
+      }
+    },
+    "losBurocratas": {
+      "fixed": {
+        "role": "Medicos del mundo real",
+        "appearance": "Sin rostro, batas blancas",
+        "behavior": "Intentan calmar a Arturo"
+      },
+      "variable": {
+        "phrases": [
+          "El sujeto muestra resistencia",
+          "[AI: frase clinica 2]",
+          "[AI: frase clinica 3]"
+        ]
+      }
+    }
+  },
+  "anclas": [
+    {
+      "id": "ticket_cine",
+      "type": "papel",
+      "act": 1,
+      "fixed": {
+        "effect": "Estabiliza mundo 5 segundos"
+      },
+      "variable": {
+        "movieName": "[AI]",
+        "audioText": "[AI: voz esposa - 'Arturo, despierta...']"
+      }
+    },
+    {
+      "id": "dibujo_infantil",
+      "type": "papel",
+      "act": 2,
+      "variable": {
+  "content": "[AI: que dibujo]",
+  "message": "[AI: 'Para papa...']",
+        "audioText": "[AI: voz hija cantando]"
+      }
+    },
+    {
+      "id": "informe_policial",
+      "type": "documento",
+      "act": 3,
+      "variable": {
+        "cause": "[AI: causa oficial]",
+        "date": "[AI: fecha]"
+      }
+    }
+  ],
+  "worldEffects": {
+    "act1": {
+      "coherence": "80-100",
+      "atmosphere": "Ciudad lluviosa, arquitectura opresiva",
+      "distortions": "Minimas"
+    },
+    "act2": {
+      "coherence": "30-60",
+      "atmosphere": "Surrealista, gravedad inestable",
+      "distortions": "Maximas"
+    },
+    "act3": {
+      "coherence": "0-30",
+      "atmosphere": "Un solo lugar en loop",
+      "location": "[AI: cocina/auto/habitacion donde ocurrio]"
+    }
+  }
+}

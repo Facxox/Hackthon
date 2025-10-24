@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Arquitectura de un Colapso</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="loadingScreen" class="visible">
+    <div class="loading-container">
+      <h1 class="glitch" data-text="ARQUITECTURA DE UN COLAPSO">ARQUITECTURA DE UN COLAPSO</h1>
+      <div class="progress-bar">
+        <div class="progress"></div>
+      </div>
+      <p class="loading-text">CARGANDO...</p>
+      <button id="startButton" class="start-button" disabled>INICIAR</button>
+    </div>
+  </div>
+  <canvas id="gameCanvas" width="800" height="600"></canvas>
+  <div id="ui">
+    <div id="hpContainer">
+      <span>Salud</span>
+      <div id="hpBar"><div id="hpFill"></div></div>
+    </div>
+    <div id="dialogueBox" class="hidden"></div>
+  </div>
+  <div id="flashOverlay"></div>
+  <div id="fractureOverlay"></div>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
