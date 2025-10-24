@@ -1,5 +1,5 @@
 class NPC {
-  constructor({ x, y, speed = 20, color = '#8a8a8a', name = 'NPC' }) {
+  constructor({ x, y, speed = 20, color = '#8a8a8a', name = 'NPC', sprite = null }) {
     this.x = x;
     this.y = y;
     this.speed = speed;
@@ -10,6 +10,7 @@ class NPC {
     this.dialogue = null;
     this.dialogueTimer = 0;
     this.visible = true;
+    this.sprite = sprite;
   }
 
   update(deltaTime, context) {
@@ -23,13 +24,17 @@ class NPC {
 
   render(renderer) {
     if (!this.visible) return;
-    renderer.drawRect({
-      x: this.x - this.width / 2,
-      y: this.y - this.height / 2,
-      width: this.width,
-      height: this.height,
-      color: this.baseColor,
-    });
+    if (this.sprite) {
+      renderer.drawSprite({ name: this.sprite, x: this.x, y: this.y, scale: 1 });
+    } else {
+      renderer.drawRect({
+        x: this.x - this.width / 2,
+        y: this.y - this.height / 2,
+        width: this.width,
+        height: this.height,
+        color: this.baseColor,
+      });
+    }
     if (this.dialogue) {
       renderer.drawFloatingText({
         x: this.x,
@@ -48,7 +53,7 @@ class NPC {
 
 export class LaNina extends NPC {
   constructor(config) {
-  super({ ...config, color: '#fbee7b', name: 'La Nina' });
+    super({ ...config, color: '#fbee7b', name: 'La Nina', sprite: 'la_nina' });
     this.reappearTimer = 0;
   }
 
@@ -88,7 +93,7 @@ export class LaNina extends NPC {
 
 export class ElCritico extends NPC {
   constructor(config, dialogues) {
-  super({ ...config, color: '#202020', name: 'El Critico' });
+    super({ ...config, color: '#202020', name: 'El Critico', sprite: 'el_critico' });
     this.dialogues = dialogues || {};
     this.speed = 35;
     this.eyesPulse = 0;
@@ -133,7 +138,7 @@ export class ElCritico extends NPC {
 
 export class Burocrata extends NPC {
   constructor(config, phrases) {
-  super({ ...config, color: '#f8f9fb', name: 'Burocrata' });
+    super({ ...config, color: '#f8f9fb', name: 'Burocrata', sprite: 'burocrata' });
     this.radius = 24;
     this.angle = Math.random() * Math.PI * 2;
     this.origin = { x: this.x, y: this.y };
@@ -215,12 +220,12 @@ export class EnemyEcho {
 
   render(renderer) {
     if (this.fade <= 0) return;
-    renderer.drawRect({
-      x: this.x - this.width / 2,
-      y: this.y - this.height / 2,
-      width: this.width,
-      height: this.height,
-      color: `rgba(88, 99, 130, ${this.fade})`,
+    renderer.drawSprite({
+      name: 'enemy_echo',
+      x: this.x,
+      y: this.y,
+      opacity: this.fade,
+      scale: 1,
     });
   }
 

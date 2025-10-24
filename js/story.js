@@ -46,8 +46,8 @@ const FALLBACK_NPCS = {
       tone: 'sarcastico',
     },
     dialogues: {
-  act1_whispers: ['Aun hueles a gas, Arturo.', 'Tu la dejaste sola. Recuerdas?'],
-  act2_chase: ['Apagaste la estufa, seguro? !Mira sus manos!', 'No corriste lo suficiente, ella ardio llorando.'],
+      act1_whispers: ['Aun hueles a gas, Arturo.', 'Tu la dejaste sola. Recuerdas?'],
+      act2_chase: ['Apagaste la estufa, seguro? !Mira sus manos!', 'No corriste lo suficiente, ella ardio llorando.'],
       act3_final: 'Reconocelo ya: no la escuchaste cuando grito tu nombre.',
     },
   },
@@ -161,40 +161,40 @@ export class StoryManager {
     const causes = ['estufa', 'auto', 'gas', 'incendio electrico'];
     const professions = ['contable', 'ingeniero', 'maestro', 'arquitecto'];
     const laughTypes = ['una risa baja y entrecortada', 'un jadeo que termina en carcajada', 'risas como campanas distantes'];
-  const tones = ['sarcastico', 'furioso', 'melancolico'];
-  const drawOptions = ['una casa en llamas', 'a mama leyendo', 'un auto rojo roto', 'a los tres tomados de la mano'];
-  const memoryMessages = ['Para papa, no vuelvas a dormirme tarde', 'Para papa, cuando volvamos al cine', 'Para papa, te amo incluso cuando gritas'];
+    const tones = ['sarcastico', 'furioso', 'melancolico'];
+    const drawOptions = ['una casa en llamas', 'a mama leyendo', 'un auto rojo roto', 'a los tres tomados de la mano'];
+    const memoryMessages = ['Para papa, no vuelvas a dormirme tarde', 'Para papa, cuando volvamos al cine', 'Para papa, te amo incluso cuando gritas'];
     const atmospheres = ['cocina', 'sala principal', 'garaje', 'dormitorio'];
 
-  clone.variable.traumaCause = this.#randomPick(causes);
-  clone.variable.profession = this.#randomPick(professions);
-  clone.variable.wifeName = this.#randomPick(names.wife);
-  clone.variable.daughterName = this.#randomPick(names.daughter);
-  clone.variable.daughterAge = String(5 + Math.floor(Math.random() * 4));
+    clone.variable.traumaCause = this.#randomPick(causes);
+    clone.variable.profession = this.#randomPick(professions);
+    clone.variable.wifeName = this.#randomPick(names.wife);
+    clone.variable.daughterName = this.#randomPick(names.daughter);
+    clone.variable.daughterAge = String(5 + Math.floor(Math.random() * 4));
 
-  clone.npcs.laNina.variable.physicalDetails = `Cabello ${this.#randomPick(['negro', 'castano', 'ceniza'])}, ojos ${this.#randomPick(['grisaceos', 'azules', 'vacios'])}`;
-  clone.npcs.laNina.variable.laughType = this.#randomPick(laughTypes);
-  clone.npcs.laNina.dialogues.act1 = 'Aparece cuando Arturo toca la primera ancla y se sienta frente a el en silencio.';
-  clone.npcs.laNina.dialogues.act3 = 'En la cocina envuelta en luz roja, la nina abraza a Arturo antes de desvanecerse.';
+    clone.npcs.laNina.variable.physicalDetails = `Cabello ${this.#randomPick(['negro', 'castano', 'ceniza'])}, ojos ${this.#randomPick(['grisaceos', 'azules', 'vacios'])}`;
+    clone.npcs.laNina.variable.laughType = this.#randomPick(laughTypes);
+    clone.npcs.laNina.dialogues.act1 = 'Aparece cuando Arturo toca la primera ancla y se sienta frente a el en silencio.';
+    clone.npcs.laNina.dialogues.act3 = 'En la cocina envuelta en luz roja, la nina abraza a Arturo antes de desvanecerse.';
 
-  clone.npcs.elCritico.variable.tone = this.#randomPick(tones);
-  clone.npcs.elCritico.dialogues.act1_whispers[0] = 'Sabes que fue tu culpa, aunque intentes olvidarlo.';
-  clone.npcs.elCritico.dialogues.act2_chase[0] = `Otra vez dejaste la ${clone.variable.traumaCause} sin revisar?`;
-  clone.npcs.elCritico.dialogues.act2_chase[1] = `Dejaste a ${clone.variable.wifeName} y ${clone.variable.daughterName} esperando en vano.`;
-  clone.npcs.elCritico.dialogues.act3_final = 'Mirame bien: soy la parte de ti que nunca perdonara lo que hiciste.';
+    clone.npcs.elCritico.variable.tone = this.#randomPick(tones);
+    clone.npcs.elCritico.dialogues.act1_whispers[0] = 'Sabes que fue tu culpa, aunque intentes olvidarlo.';
+    clone.npcs.elCritico.dialogues.act2_chase[0] = `Otra vez dejaste la ${clone.variable.traumaCause} sin revisar?`;
+    clone.npcs.elCritico.dialogues.act2_chase[1] = `Dejaste a ${clone.variable.wifeName} y ${clone.variable.daughterName} esperando en vano.`;
+    clone.npcs.elCritico.dialogues.act3_final = 'Mirame bien: soy la parte de ti que nunca perdonara lo que hiciste.';
 
-  clone.npcs.losBurocratas.variable.phrases[1] = 'Aumenta la respuesta autonomica, mantener sedacion.';
-  clone.npcs.losBurocratas.variable.phrases[2] = 'Informe: paciente Arturo R. repite el incidente sin aceptar culpa.';
+    clone.npcs.losBurocratas.variable.phrases[1] = 'Aumenta la respuesta autonomica, mantener sedacion.';
+    clone.npcs.losBurocratas.variable.phrases[2] = 'Informe: paciente Arturo R. repite el incidente sin aceptar culpa.';
 
-  clone.anclas[0].variable.movieName = this.#randomPick(['El Faro', 'La Casa de las Sombras', 'Cielos Rotos']);
-  clone.anclas[0].variable.audioText = `${clone.variable.wifeName}: "Arturo, despierta, la nina tiene frio."`;
-  clone.anclas[1].variable.content = `Dibujo de ${this.#randomPick(drawOptions)}.`;
-  clone.anclas[1].variable.message = this.#randomPick(memoryMessages);
-  clone.anclas[1].variable.audioText = `${clone.variable.daughterName}: "Papa, mira, hice esto para ti."`;
-  clone.anclas[2].variable.cause = `Combustion provocada por ${clone.variable.traumaCause} mal apagada.`;
-  clone.anclas[2].variable.date = '12/09/2016';
+    clone.anclas[0].variable.movieName = this.#randomPick(['El Faro', 'La Casa de las Sombras', 'Cielos Rotos']);
+    clone.anclas[0].variable.audioText = `${clone.variable.wifeName}: "Arturo, despierta, la nina tiene frio."`;
+    clone.anclas[1].variable.content = `Dibujo de ${this.#randomPick(drawOptions)}.`;
+    clone.anclas[1].variable.message = this.#randomPick(memoryMessages);
+    clone.anclas[1].variable.audioText = `${clone.variable.daughterName}: "Papa, mira, hice esto para ti."`;
+    clone.anclas[2].variable.cause = `Combustion provocada por ${clone.variable.traumaCause} mal apagada.`;
+    clone.anclas[2].variable.date = '12/09/2016';
 
-  clone.worldEffects.act3.location = this.#randomPick(atmospheres);
+    clone.worldEffects.act3.location = this.#randomPick(atmospheres);
 
     return clone;
   }

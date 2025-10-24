@@ -44,8 +44,8 @@ export class ChunkManager {
         const worldX = baseX + tx * this.tileSize;
         const worldY = baseY + ty * this.tileSize;
         const noise = random();
-        const color = this.#pickColor(noise);
-        tiles.push({ x: worldX, y: worldY, size: this.tileSize, color });
+        const texture = this.#pickTexture(noise);
+        tiles.push({ x: worldX, y: worldY, size: this.tileSize, color: texture });
 
         if (noise > 0.92) {
           structures.push({
@@ -93,10 +93,9 @@ export class ChunkManager {
     };
   }
 
-  #pickColor(noise) {
-    if (noise > 0.8) return '#1f2430';
-    if (noise > 0.6) return '#111521';
-    if (noise > 0.4) return '#0c1018';
-    return '#080a12';
+  #pickTexture(noise) {
+    if (noise > 0.85) return 'tile_fracture';
+    if (noise > 0.65) return 'tile_ruin';
+    return 'tile_ground';
   }
 }

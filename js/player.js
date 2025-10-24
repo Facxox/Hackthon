@@ -62,13 +62,12 @@ export class Player {
   }
 
   render(renderer) {
-    const sprite = {
-      x: this.x - this.width / 2,
-      y: this.y - this.height / 2,
-      width: this.width,
-      height: this.height,
-      color: this.attackTimer > 0 ? '#f05454' : '#c9d1d9',
-    };
-    renderer.drawRect(sprite);
+    renderer.drawSprite({
+      name: 'arturo',
+      x: this.x,
+      y: this.y,
+      scale: 1,
+      opacity: this.attackTimer > 0 ? 0.85 : 1,
+    });
   }
 }

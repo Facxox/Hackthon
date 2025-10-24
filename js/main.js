@@ -21,7 +21,10 @@ const storyManager = new StoryManager();
 
 async function bootstrap() {
   try {
-    await storyManager.generateStory();
+    await Promise.all([
+      storyManager.generateStory(),
+      game.loadAssets(),
+    ]);
     game.attachStory(storyManager);
     startButton.disabled = false;
     startButton.classList.add('enabled');

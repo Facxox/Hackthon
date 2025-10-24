@@ -31,8 +31,15 @@ export class Game {
     this.dialogueTimer = 0;
     this.enemySpawnTimer = 3;
     this.flashTimer = 0;
+    this.assetsLoaded = false;
 
     this.boundLoop = this.loop.bind(this);
+  }
+
+  async loadAssets() {
+    if (this.assetsLoaded) return;
+    await this.renderer.loadAssets();
+    this.assetsLoaded = true;
   }
 
   attachStory(storyManager) {
@@ -116,12 +123,12 @@ export class Game {
 
     this.anchors.forEach((anchor) => anchor.render(this.renderer, this.player));
     this.npcs.forEach((npc) => npc.render(this.renderer));
-    this.memoryEchoes.forEach((echo) => this.renderer.drawRect({
-      x: echo.x - 6,
-      y: echo.y - 6,
-      width: 12,
-      height: 12,
-      color: 'rgba(150, 160, 210, 0.5)',
+    this.memoryEchoes.forEach((echo) => this.renderer.drawSprite({
+      name: 'enemy_echo',
+      x: echo.x,
+      y: echo.y,
+      scale: 0.75,
+      opacity: 0.6,
     }));
     this.enemies.forEach((enemy) => enemy.render(this.renderer));
     this.player.render(this.renderer);
@@ -219,7 +226,7 @@ export class Game {
   }
 
   updateEnemies(deltaTime) {
-  this.enemies = this.enemies.filter((enemy) => !enemy.update(deltaTime, this.player, this.fracture));
+    this.enemies = this.enemies.filter((enemy) => !enemy.update(deltaTime, this.player, this.fracture));
   }
 
   updateEchoes(deltaTime) {

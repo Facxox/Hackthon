@@ -1,3 +1,15 @@
+const SPRITE_SOURCES = {
+  arturo: 'assets/sprites/arturo.png',
+  la_nina: 'assets/sprites/la_nina.png',
+  el_critico: 'assets/sprites/el_critico.png',
+  burocrata: 'assets/sprites/burocrata.png',
+  enemy_echo: 'assets/sprites/enemy_echo.png',
+  anchor_fragmento: 'assets/sprites/anchor_fragmento.png',
+  tile_ground: 'assets/sprites/tile_ground.png',
+  tile_fracture: 'assets/sprites/tile_fracture.png',
+  tile_ruin: 'assets/sprites/tile_ruin.png',
+};
+
 export class Renderer {
   constructor(canvas, fractureOverlay) {
     this.canvas = canvas;
@@ -10,8 +22,32 @@ export class Renderer {
     this.effects = { shakeIntensity: 0, overlayIntensity: 0, blur: 0, chromaticOffset: 0 };
     this.shakeOffset = { x: 0, y: 0 };
     this.backgroundColor = '#070a12';
+    this.sprites = {};
+    this.assetsReady = false;
     window.addEventListener('resize', () => this.resize());
     this.resize();
+  }
+
+  async loadAssets() {
+    if (this.assetsReady) return;
+    const entries = Object.entries(SPRITE_SOURCES);
+    await Promise.all(entries.map(([key, src]) => this.#loadSingleSprite(key, src)));
+    this.assetsReady = true;
+  }
+
+  async #loadSingleSprite(key, src) {
+    return new Promise((resolve) => {
+      const image = new Image();
+      image.onload = () => {
+        this.sprites[key] = image;
+        resolve();
+      };
+      image.onerror = () => {
+        console.warn(`No se pudo cargar sprite ${src}`);
+        resolve();
+      };
+      image.src = src;
+    });
   }
 
   resize() {
@@ -57,8 +93,14 @@ export class Renderer {
   }
 
   drawTile({ x, y, size, color }) {
-    this.ctx.fillStyle = color;
-    this.ctx.fillRect(x, y, size, size);
+    if (color && this.sprites[color]) {
+      const sprite = this.sprites[color];
+      const scale = size / sprite.width;
+      this.drawSprite({ name: color, x, y, anchor: 'top-left', scale });
+    } else {
+      this.ctx.fillStyle = color || '#0f0f0f';
+      this.ctx.fillRect(x, y, size, size);
+    }
   }
 
   drawRect({ x, y, width, height, color }) {
@@ -67,18 +109,23 @@ export class Renderer {
   }
 
   drawAnchor({ x, y, glow, visible, fade }) {
-    if (visible) {
-      this.ctx.fillStyle = '#f7e07d';
+    if (this.sprites.anchor_fragmento) {
+      if (visible) {
+        this.drawSprite({ name: 'anchor_fragmento', x, y, scale: 1, opacity: 1 });
+      } else if (!visible && fade > 0) {
+        this.drawSprite({ name: 'anchor_fragmento', x, y, scale: 1, opacity: fade });
+      }
+    } else {
+      this.ctx.fillStyle = `rgba(247, 224, 125, ${visible ? 1 : fade})`;
       this.ctx.fillRect(x - 8, y - 8, 16, 16);
     }
-    if (!visible) {
-      this.ctx.fillStyle = `rgba(247, 224, 125, ${fade})`;
-      this.ctx.fillRect(x - 8, y - 8, 16, 16);
-    }
+
     if (glow) {
-      this.ctx.strokeStyle = 'rgba(255, 238, 170, 0.6)';
+      this.ctx.save();
+      this.ctx.strokeStyle = 'rgba(255, 238, 170, 0.45)';
       this.ctx.lineWidth = 1;
       this.ctx.strokeRect(x - 10, y - 10, 20, 20);
+      this.ctx.restore();
     }
   }
 
@@ -94,5 +141,24 @@ export class Renderer {
     this.ctx.fillStyle = `rgba(255, 20, 20, ${0.6 + intensity * 0.4})`;
     this.ctx.fillRect(x - 4, y - 4, 3, 3);
     this.ctx.fillRect(x + 1, y - 4, 3, 3);
+  }
+
+  drawSprite({ name, x, y, scale = 1, opacity = 1, anchor = 'center' }) {
+    const sprite = this.sprites[name];
+    if (!sprite) {
+      return;
+    }
+    const width = sprite.width * scale;
+    const height = sprite.height * scale;
+    let drawX = x;
+    let drawY = y;
+    if (anchor === 'center') {
+      drawX = x - width / 2;
+      drawY = y - height / 2;
+    }
+    this.ctx.save();
+    this.ctx.globalAlpha = opacity;
+    this.ctx.drawImage(sprite, drawX, drawY, width, height);
+    this.ctx.restore();
   }
 }
