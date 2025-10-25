@@ -23,6 +23,11 @@ export class Game {
     mazeOverlay,
     mazeCanvas,
     mazeCounter,
+    noteOverlay,
+    noteTitle,
+    noteBody,
+    noteCloseButton,
+    noteContinueButton,
   }) {
     this.canvas = canvas;
     this.dialogueBox = dialogueBox;
@@ -57,6 +62,28 @@ export class Game {
   this.mazeCompletions = 0;
   this.currentMazeLevel = 0;
   this.mazeCounterElement = mazeCounter || null;
+    this.noteOverlay = noteOverlay || null;
+    this.noteTitleElement = noteTitle || null;
+    this.noteBodyElement = noteBody || null;
+    this.noteCloseButton = noteCloseButton || null;
+    this.noteContinueButton = noteContinueButton || null;
+    this.isNoteVisible = false;
+    this.noteLockActive = false;
+  this.lastNoteIndexShown = -1;
+    this.mazeNotes = [
+      {
+        title: 'Bitácora I: La Llamada',
+        body: 'Encontré la nota arrugada que dejaste en la cocina. Decías que volverías antes de que oscureciera, que solo ibas al trabajo a "apagar un último incendio". Clara probó el teléfono toda la tarde, pero tu línea sonó ocupada hasta que el humo ya era otra cosa. No estabas aquí cuando prometiste que estaría segura.',
+      },
+      {
+        title: 'Bitácora II: La Puerta',
+        body: 'Los bomberos dijeron que la puerta estaba trabada por dentro. Clara raspó la madera con las uñas; aún las veo en el marco chamuscado. Le dijiste que esperara quieta, que no abriera por nada. Ella obedeció, papá. Creyó que tu voz iba a llegar antes que el fuego. No entiendo por qué tardaste tanto.',
+      },
+      {
+        title: 'Bitácora III: La Verdad',
+        body: 'El parte policial menciona el bar de la avenida. Dijeron que peleaste con el jefe, que te negaste a salir porque "no volverías a ese infierno". Mientras discutías bajo la lluvia, Clara gritaba tu nombre detrás de las cortinas ardiendo. Ella no murió por el incendio. Murió esperando que cumplieras tu promesa.',
+      },
+    ];
 
     this.lastTime = null;
     this.dialogueTimer = 0;
@@ -79,6 +106,13 @@ export class Game {
       this.maze.setProgress(this.mazeCompletions, this.totalMazeLevels);
     }
     this.#updateMazeCounter();
+
+    if (this.noteCloseButton) {
+      this.noteCloseButton.addEventListener('click', () => this.#dismissMazeNote());
+    }
+    if (this.noteContinueButton) {
+      this.noteContinueButton.addEventListener('click', () => this.#dismissMazeNote());
+    }
 
     if (this.restartButton) {
       this.restartButton.addEventListener('click', () => {
@@ -167,6 +201,11 @@ export class Game {
       return;
     }
 
+    if (this.isNoteVisible) {
+      this.updateUi(deltaTime);
+      return;
+    }
+
     this.fracture.update(deltaTime);
     this.handleSpawning(deltaTime);
 
@@ -242,7 +281,7 @@ export class Game {
   }
 
   handleInteraction() {
-    if (this.maze && this.maze.isActive) {
+    if ((this.maze && this.maze.isActive) || this.isNoteVisible) {
       return;
     }
 
@@ -522,6 +561,13 @@ export class Game {
       this.input.setMovementLocked(false);
     }
 
+    this.isNoteVisible = false;
+    this.noteLockActive = false;
+    this.lastNoteIndexShown = -1;
+    if (this.noteOverlay) {
+      this.noteOverlay.classList.remove('visible');
+    }
+
     this.mazeCompletions = 0;
     this.currentMazeLevel = 0;
     this.#updateMazeCounter();
@@ -655,7 +701,65 @@ export class Game {
       this.maze.setProgress(this.mazeCompletions, this.totalMazeLevels);
     }
 
+    const noteIndex = this.mazeCompletions - 1;
+    if (
+      success &&
+      noteIndex >= 0 &&
+      noteIndex < this.mazeNotes.length &&
+      noteIndex > this.lastNoteIndexShown
+    ) {
+      this.#showMazeNote(noteIndex);
+    }
+
     this.activeGuardian = null;
+  }
+
+  #showMazeNote(index) {
+    if (!this.noteOverlay || !Array.isArray(this.mazeNotes)) {
+      return;
+    }
+
+    if (!Number.isFinite(index) || index < 0 || index >= this.mazeNotes.length) {
+      return;
+    }
+
+    const note = this.mazeNotes[index];
+    if (!note) {
+      return;
+    }
+
+    if (this.noteTitleElement) {
+      this.noteTitleElement.textContent = note.title || 'Memoria';
+    }
+    if (this.noteBodyElement) {
+      this.noteBodyElement.textContent = note.body || '';
+    }
+
+    this.noteOverlay.classList.add('visible');
+    this.isNoteVisible = true;
+    this.noteLockActive = true;
+  this.lastNoteIndexShown = index;
+    if (this.input) {
+      this.input.setMovementLocked(true);
+    }
+    if (this.dialogueBox) {
+      this.dialogueBox.classList.add('hidden');
+    }
+  }
+
+  #dismissMazeNote() {
+    if (!this.isNoteVisible) {
+      return;
+    }
+
+    this.isNoteVisible = false;
+    this.noteLockActive = false;
+    if (this.noteOverlay) {
+      this.noteOverlay.classList.remove('visible');
+    }
+    if (!this.mazeActive && this.input) {
+      this.input.setMovementLocked(false);
+    }
   }
 
   #updateMazeCounter() {

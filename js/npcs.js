@@ -55,8 +55,8 @@ export class LaNina extends NPC {
   constructor(config) {
     super({ ...config, color: '#fbee7b', name: 'La Nina', sprite: 'la_nina' });
     this.reappearTimer = 0;
-    this.dialogueCooldown = 2 + Math.random() * 4;
-    this.silenceTimer = 0;
+    this.dialogueCooldown = 1.2 + Math.random() * 2;
+    this.silenceTimer = 0.5 + Math.random();
     this.phrases = [
       'Me mataste.',
       'Morí por tu culpa.',
@@ -88,15 +88,15 @@ export class LaNina extends NPC {
       if (this.dialogueTimer <= 0 && this.dialogueCooldown <= 0) {
         const phrase = this.phrases[Math.floor(Math.random() * this.phrases.length)];
         this.showDialogue(phrase, 3.8);
-        this.dialogueCooldown = 6 + Math.random() * 6;
-        this.silenceTimer = 2 + Math.random() * 3;
+        this.dialogueCooldown = 3 + Math.random() * 2.2;
+        this.silenceTimer = 1 + Math.random() * 1.4;
       } else if (this.dialogueTimer <= 0 && this.silenceTimer <= 0) {
-        this.dialogueCooldown = 4 + Math.random() * 5;
-        this.silenceTimer = 2 + Math.random() * 3;
+        this.dialogueCooldown = 2 + Math.random() * 2.4;
+        this.silenceTimer = 1 + Math.random() * 1.4;
       }
     } else {
-      this.dialogueCooldown = Math.max(this.dialogueCooldown, 3);
-      this.silenceTimer = Math.max(this.silenceTimer, 2);
+      this.dialogueCooldown = Math.max(this.dialogueCooldown, 1.8);
+      this.silenceTimer = Math.max(this.silenceTimer, 1.2);
     }
   }
 

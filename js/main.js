@@ -14,6 +14,11 @@ const returnMenuButton = document.getElementById('returnMenuButton');
 const mazeOverlay = document.getElementById('mazeOverlay');
 const mazeCanvas = document.getElementById('mazeCanvas');
 const mazeCounter = document.getElementById('mazeCounter');
+const noteOverlay = document.getElementById('noteOverlay');
+const noteTitle = document.querySelector('[data-note-title]');
+const noteBody = document.querySelector('[data-note-body]');
+const noteCloseButton = document.getElementById('noteCloseButton');
+const noteContinueButton = document.getElementById('noteContinueButton');
 
 const game = new Game({
   canvas,
@@ -29,6 +34,11 @@ const game = new Game({
   mazeOverlay,
   mazeCanvas,
   mazeCounter,
+  noteOverlay,
+  noteTitle,
+  noteBody,
+  noteCloseButton,
+  noteContinueButton,
 });
 
 const storyManager = new StoryManager();
