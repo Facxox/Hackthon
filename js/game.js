@@ -5,6 +5,7 @@ import { ChunkManager } from './mapGenerator.js';
 import { FractureSystem } from './fracture.js';
 import { CombatSystem } from './combat.js';
 import { EnemyEcho, MemoryEcho, ShelterGuardian } from './npcs.js';
+import { MazeMinigame } from './maze.js';
 import { Shelter } from './shelters.js';
 
 export class Game {
@@ -19,17 +20,21 @@ export class Game {
     returnMenuButton,
     loadingScreen,
     startButton,
+    mazeOverlay,
+    mazeCanvas,
+    mazeCounter,
   }) {
     this.canvas = canvas;
     this.dialogueBox = dialogueBox;
     this.hpFill = hpFill;
     this.flashOverlay = flashOverlay;
+    this.fractureOverlay = fractureOverlay;
     this.gameOverScreen = gameOverScreen;
     this.restartButton = restartButton;
     this.returnMenuButton = returnMenuButton;
     this.loadingScreen = loadingScreen;
     this.startButton = startButton;
-    this.renderer = new Renderer(canvas, fractureOverlay);
+  this.renderer = new Renderer(canvas, fractureOverlay);
     this.input = new InputHandler();
     this.player = new Player(0, 0);
     this.chunkManager = new ChunkManager();
@@ -45,7 +50,13 @@ export class Game {
     this.shelters = [];
     this.shelterNpcs = [];
     this.visibleChunks = [];
-    this.playerInsideShelter = false;
+  this.playerInsideShelter = false;
+  this.mazeActive = false;
+  this.currentShelter = null;
+  this.activeGuardian = null;
+  this.mazeCompletions = 0;
+  this.currentMazeLevel = 0;
+  this.mazeCounterElement = mazeCounter || null;
 
     this.lastTime = null;
     this.dialogueTimer = 0;
@@ -54,6 +65,20 @@ export class Game {
     this.assetsLoaded = false;
 
     this.boundLoop = this.loop.bind(this);
+
+    this.maze = mazeOverlay && mazeCanvas
+      ? new MazeMinigame({
+        overlayElement: mazeOverlay,
+        canvasElement: mazeCanvas,
+        onComplete: (success) => this.#onMazeResolved(success),
+      })
+      : null;
+    this.totalMazeLevels = this.maze?.getLevelCount?.() || 0;
+
+    if (this.maze && this.totalMazeLevels > 0) {
+      this.maze.setProgress(this.mazeCompletions, this.totalMazeLevels);
+    }
+    this.#updateMazeCounter();
 
     if (this.restartButton) {
       this.restartButton.addEventListener('click', () => {
@@ -136,6 +161,12 @@ export class Game {
   }
 
   update(deltaTime) {
+    if (this.maze && this.maze.isActive) {
+      this.maze.update(deltaTime);
+      this.updateUi(deltaTime);
+      return;
+    }
+
     this.fracture.update(deltaTime);
     this.handleSpawning(deltaTime);
 
@@ -211,6 +242,20 @@ export class Game {
   }
 
   handleInteraction() {
+    if (this.maze && this.maze.isActive) {
+      return;
+    }
+
+    const guardian = this.#findActiveGuardian();
+    if (guardian) {
+      if (this.maze && !this.mazeActive) {
+        this.#openMazeChallenge(guardian);
+      } else {
+        guardian.showDialogue('Podemos intentarlo cuando quieras.', 3.6);
+      }
+      return;
+    }
+
     let closest = null;
     let minDistance = Infinity;
     this.anchors.forEach((anchor) => {
@@ -303,6 +348,8 @@ export class Game {
   updateShelters(deltaTime) {
     if (this.shelters.length === 0) {
       this.playerInsideShelter = false;
+      this.currentShelter = null;
+      this.activeGuardian = null;
       return;
     }
 
@@ -331,7 +378,15 @@ export class Game {
       this.scatterHostiles();
     }
 
-    this.playerInsideShelter = this.shelters.some((shelter) => shelter.playerInside);
+    this.currentShelter = this.shelters.find((shelter) => shelter.playerInside) || null;
+    this.playerInsideShelter = Boolean(this.currentShelter);
+
+    if (!this.playerInsideShelter) {
+      this.activeGuardian = null;
+      if (this.maze && this.maze.isActive) {
+        this.maze.close(false);
+      }
+    }
   }
 
   updateEnemies(deltaTime) {
@@ -455,6 +510,25 @@ export class Game {
   }
 
   resetWorld() {
+    if (this.maze && this.maze.isActive) {
+      this.activeGuardian = null;
+      this.maze.close(false);
+    }
+
+    this.mazeActive = false;
+    this.activeGuardian = null;
+    this.currentShelter = null;
+    if (this.input) {
+      this.input.setMovementLocked(false);
+    }
+
+    this.mazeCompletions = 0;
+    this.currentMazeLevel = 0;
+    this.#updateMazeCounter();
+    if (this.maze) {
+      this.maze.setProgress(this.mazeCompletions, this.totalMazeLevels);
+    }
+
     this.player = new Player(0, 0);
     this.fracture = new FractureSystem();
     this.combat = new CombatSystem();
@@ -499,6 +573,104 @@ export class Game {
       this.storyManager.spawnAnclas(this);
       this.storyManager.spawnNPCs(this);
       this.#refreshShelters();
+    }
+  }
+
+  #findActiveGuardian() {
+    if (!this.playerInsideShelter || !this.currentShelter) {
+      return null;
+    }
+
+    let closest = null;
+    let minDistance = Infinity;
+    this.shelterNpcs.forEach((guardian) => {
+      if (!guardian || guardian.shelter !== this.currentShelter) {
+        return;
+      }
+      const distance = Math.hypot(this.player.x - guardian.x, this.player.y - guardian.y);
+      if (distance < 36 && distance < minDistance) {
+        minDistance = distance;
+        closest = guardian;
+      }
+    });
+
+    return closest;
+  }
+
+  #openMazeChallenge(guardian) {
+    if (!this.maze || this.mazeActive) {
+      return;
+    }
+
+  const totalLevels = this.totalMazeLevels || this.maze.getLevelCount?.() || 0;
+  this.totalMazeLevels = totalLevels;
+    const levelIndex = totalLevels > 0 ? Math.min(this.mazeCompletions, totalLevels - 1) : 0;
+    this.currentMazeLevel = levelIndex;
+
+    this.mazeActive = true;
+    this.activeGuardian = guardian || null;
+    this.input.setMovementLocked(true);
+    if (totalLevels > 0) {
+      this.maze.setProgress(this.mazeCompletions, totalLevels);
+    }
+    this.#updateMazeCounter();
+    this.maze.open(levelIndex);
+
+    if (guardian) {
+      guardian.showDialogue('Respira conmigo. Sigue la salida.', 4.2);
+    }
+
+    if (this.dialogueBox) {
+      this.dialogueBox.classList.add('hidden');
+    }
+  }
+
+  #onMazeResolved(success) {
+    this.mazeActive = false;
+    this.input.setMovementLocked(false);
+
+    if (success) {
+      if (this.mazeCompletions < this.totalMazeLevels) {
+        this.mazeCompletions += 1;
+      }
+      this.fracture.registerInteraction(10);
+      if (typeof this.fracture.stabilize === 'function') {
+        this.fracture.stabilize(6);
+      }
+      this.#updateMazeCounter();
+      if (this.activeGuardian) {
+        if (this.mazeCompletions >= this.totalMazeLevels && this.totalMazeLevels > 0) {
+          this.activeGuardian.showDialogue('Ya domaste cada recuerdo. Descansa aquí.', 4);
+        } else {
+          this.activeGuardian.showDialogue('Bien. El refugio late contigo.', 3.8);
+        }
+      } else if (this.dialogueBox) {
+        this.showDialogue('Siento el refugio calmo.', 3.4);
+      }
+    } else if (this.activeGuardian) {
+      this.activeGuardian.showDialogue('No pasa nada, quedamos aquí contigo.', 3.6);
+    }
+
+    if (this.maze) {
+      this.maze.setProgress(this.mazeCompletions, this.totalMazeLevels);
+    }
+
+    this.activeGuardian = null;
+  }
+
+  #updateMazeCounter() {
+    if (!this.mazeCounterElement) {
+      return;
+    }
+
+    const total = this.totalMazeLevels || 0;
+    const current = Math.min(this.mazeCompletions, total);
+    this.mazeCounterElement.textContent = `Laberintos completados: ${current}/${total || 0}`;
+
+    if (total > 0 && current >= total) {
+      this.mazeCounterElement.classList.add('complete');
+    } else {
+      this.mazeCounterElement.classList.remove('complete');
     }
   }
 

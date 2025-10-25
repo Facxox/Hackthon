@@ -23,6 +23,7 @@
       <span>Salud</span>
       <div id="hpBar"><div id="hpFill"></div></div>
     </div>
+    <div id="mazeCounter" class="maze-counter">Laberintos completados: 0/3</div>
     <div id="dialogueBox" class="hidden"></div>
     <div id="gameOverScreen" class="hidden">
       <h2>Colapso</h2>
@@ -35,6 +36,16 @@
   </div>
   <div id="flashOverlay"></div>
   <div id="fractureOverlay"></div>
+  <div id="mazeOverlay">
+    <div class="maze-panel">
+      <h3>Recuerdo Laberíntico</h3>
+      <p class="maze-level" data-maze-level>Dificultad: Suave</p>
+      <canvas id="mazeCanvas" width="196" height="196"></canvas>
+      <p>Usa ↑ y ↓ (←/→ si lo necesitas). Llega a la luz.</p>
+      <span class="maze-progress" data-maze-progress>Progreso 0/3</span>
+      <span class="maze-hint">Presiona Esc para salir.</span>
+    </div>
+  </div>
   <script type="module" src="js/main.js"></script>
 </body>
 </html>

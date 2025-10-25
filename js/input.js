@@ -4,10 +4,14 @@ export class InputHandler {
     this.attackPressed = false;
     this.interactPressed = false;
     this.touchState = { x: 0, y: 0 };
+    this.movementLocked = false;
     this.#bindEvents();
   }
 
   getDirection() {
+    if (this.movementLocked) {
+      return { x: 0, y: 0 };
+    }
     let x = 0;
     let y = 0;
     if (this.keys.has('KeyW') || this.keys.has('ArrowUp')) y -= 1;
@@ -29,6 +33,13 @@ export class InputHandler {
       return true;
     }
     return false;
+  }
+
+  setMovementLocked(locked) {
+    this.movementLocked = locked;
+    if (locked) {
+      this.keys.clear();
+    }
   }
 
   consumeInteraction() {

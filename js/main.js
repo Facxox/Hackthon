@@ -11,6 +11,9 @@ const flashOverlay = document.getElementById('flashOverlay');
 const gameOverScreen = document.getElementById('gameOverScreen');
 const restartButton = document.getElementById('restartButton');
 const returnMenuButton = document.getElementById('returnMenuButton');
+const mazeOverlay = document.getElementById('mazeOverlay');
+const mazeCanvas = document.getElementById('mazeCanvas');
+const mazeCounter = document.getElementById('mazeCounter');
 
 const game = new Game({
   canvas,
@@ -23,6 +26,9 @@ const game = new Game({
   returnMenuButton,
   loadingScreen,
   startButton,
+  mazeOverlay,
+  mazeCanvas,
+  mazeCounter,
 });
 
 const storyManager = new StoryManager();
