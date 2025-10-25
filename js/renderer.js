@@ -152,12 +152,45 @@ export class Renderer {
     }
   }
 
-  drawFloatingText({ x, y, text, color }) {
-    this.ctx.font = '8px monospace';
-    this.ctx.fillStyle = '#000';
-    this.ctx.fillText(text, x - 10, y);
+  drawFloatingText({ x, y, text, color = '#f5f8ff' }) {
+    this.ctx.save();
+    const fontSize = 7;
+    this.ctx.font = `${fontSize}px monospace`;
+    this.ctx.textAlign = 'center';
+    this.ctx.textBaseline = 'middle';
+
+    const metrics = this.ctx.measureText(text);
+    const textWidth = Math.ceil(metrics.width);
+    const paddingX = 4;
+    const paddingY = 3;
+    const boxWidth = textWidth + paddingX * 2;
+    const boxHeight = fontSize + paddingY * 2;
+    const left = x - boxWidth / 2;
+    const top = y - boxHeight;
+    const pointerWidth = 8;
+    const pointerHeight = 4;
+
+    const fillStyle = 'rgba(12, 16, 26, 0.88)';
+    const strokeStyle = 'rgba(184, 205, 255, 0.9)';
+
+    this.ctx.fillStyle = fillStyle;
+    this.ctx.fillRect(left, top, boxWidth, boxHeight);
+    this.ctx.strokeStyle = strokeStyle;
+    this.ctx.lineWidth = 0.75;
+    this.ctx.strokeRect(left, top, boxWidth, boxHeight);
+
+    this.ctx.beginPath();
+    this.ctx.moveTo(x - pointerWidth / 2, top + boxHeight);
+    this.ctx.lineTo(x, top + boxHeight + pointerHeight);
+    this.ctx.lineTo(x + pointerWidth / 2, top + boxHeight);
+    this.ctx.closePath();
+    this.ctx.fillStyle = fillStyle;
+    this.ctx.fill();
+    this.ctx.stroke();
+
     this.ctx.fillStyle = color;
-    this.ctx.fillText(text, x - 11, y - 1);
+    this.ctx.fillText(text, x, top + boxHeight / 2);
+    this.ctx.restore();
   }
 
   drawEyes({ x, y, intensity }) {

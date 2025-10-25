@@ -1,4 +1,4 @@
-import { LaNina, ElCritico, Burocrata } from './npcs.js';
+import { LaNina, ElCritico } from './npcs.js';
 import { Anchor } from './anclas.js';
 
 const FALLBACK_WORLD_EFFECTS = {
@@ -139,18 +139,16 @@ export class StoryManager {
     if (!this.story) return;
     const { npcs } = this.story;
     const basePositions = [
-      { x: 0, y: -60 },
+      { x: -140, y: -110 },
       { x: 90, y: -40 },
       { x: -100, y: 120 },
     ];
 
     const nina = new LaNina({ x: basePositions[0].x, y: basePositions[0].y });
     const critico = new ElCritico({ x: basePositions[1].x, y: basePositions[1].y }, npcs.elCritico.dialogues);
-    const buro = new Burocrata({ x: basePositions[2].x, y: basePositions[2].y }, npcs.losBurocratas.variable.phrases);
 
     game.registerNPC(nina);
     game.registerNPC(critico);
-    game.registerNPC(buro);
   }
 
   spawnAnclas(game) {

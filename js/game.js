@@ -4,7 +4,7 @@ import { Renderer } from './renderer.js';
 import { ChunkManager } from './mapGenerator.js';
 import { FractureSystem } from './fracture.js';
 import { CombatSystem } from './combat.js';
-import { EnemyEcho, MemoryEcho } from './npcs.js';
+import { EnemyEcho, MemoryEcho, ShelterGuardian } from './npcs.js';
 import { Shelter } from './shelters.js';
 
 export class Game {
@@ -42,9 +42,10 @@ export class Game {
     this.anchors = [];
     this.enemies = [];
     this.memoryEchoes = [];
-  this.shelters = [];
+    this.shelters = [];
+    this.shelterNpcs = [];
     this.visibleChunks = [];
-  this.playerInsideShelter = false;
+    this.playerInsideShelter = false;
 
     this.lastTime = null;
     this.dialogueTimer = 0;
@@ -293,6 +294,8 @@ export class Game {
         player: this.player,
         fracture: this.fracture,
         anchors: this.anchors,
+        shelters: this.shelters,
+        playerInsideShelter: this.playerInsideShelter,
       });
     });
   }
@@ -465,6 +468,7 @@ export class Game {
     this.enemySpawnTimer = 3;
     this.flashTimer = 0;
     this.playerInsideShelter = false;
+    this.shelterNpcs = [];
     this.chunkManager.clearAll();
     if (this.dialogueBox) {
       this.dialogueBox.classList.add('hidden');
@@ -503,6 +507,7 @@ export class Game {
     if (!configs.length) {
       this.shelters = [];
       this.playerInsideShelter = false;
+      this.#removeShelterGuardians();
       return;
     }
     this.shelters = configs.map((config, index) => new Shelter({
@@ -510,6 +515,7 @@ export class Game {
       label: config.label || `Refugio ${index + 1}`,
     }));
     this.playerInsideShelter = false;
+    this.#spawnShelterGuardians();
   }
 
   #generateShelterConfigs() {
@@ -545,6 +551,33 @@ export class Game {
         height: 68 - Math.min(12, index * 4),
         label: `Refugio ${index + 1}`,
       };
+    });
+  }
+
+  #removeShelterGuardians() {
+    if (!this.shelterNpcs.length) return;
+    const guardianSet = new Set(this.shelterNpcs);
+    this.npcs = this.npcs.filter((npc) => !guardianSet.has(npc));
+    this.shelterNpcs = [];
+  }
+
+  #spawnShelterGuardians() {
+    this.#removeShelterGuardians();
+    if (!this.shelters.length) return;
+
+    this.shelters.forEach((shelter, index) => {
+      const guardian = new ShelterGuardian({
+        x: shelter.x,
+        y: shelter.y + shelter.height / 4,
+        sprite: 'burocrata',
+        name: `Guardián ${index + 1}`,
+      }, shelter, [
+        'Respira... estás a salvo aquí.',
+        'Afuera solo hay ruido, espera tu ritmo.',
+        'Cuando estés listo, podemos seguir.',
+      ]);
+      this.shelterNpcs.push(guardian);
+      this.registerNPC(guardian);
     });
   }
 }
