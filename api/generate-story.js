@@ -59,7 +59,12 @@ module.exports = async function handler(req, res) {
     if (!response.ok) {
       const errorText = await response.text();
       console.error('Gemini error:', errorText);
-      res.status(502).json({ error: 'Gemini respondio con error', details: errorText });
+      try {
+        const json = JSON.parse(errorText);
+        res.status(502).json({ error: 'Gemini respondio con error', details: json });
+      } catch (parseError) {
+        res.status(502).json({ error: 'Gemini respondio con error', details: errorText });
+      }
       return;
     }
 
