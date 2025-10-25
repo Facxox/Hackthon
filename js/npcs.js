@@ -177,6 +177,14 @@ export class MemoryEcho {
     }
     return this.timer <= 0;
   }
+
+  scatterAwayFrom(originX, originY) {
+    const angle = Math.random() * Math.PI * 2;
+    const distance = 160 + Math.random() * 120;
+    this.x = originX + Math.cos(angle) * distance;
+    this.y = originY + Math.sin(angle) * distance;
+    this.timer = Math.max(2, this.timer);
+  }
 }
 
 export class EnemyEcho {
@@ -190,30 +198,51 @@ export class EnemyEcho {
     this.fade = 1;
     this.isDying = false;
     this.damageCooldown = 0;
+    this.state = 'hunt';
+    this.scatterTimer = 0;
+    this.scatterTarget = { x, y };
   }
 
-  update(deltaTime, player, fractureSystem) {
+  update(deltaTime, player, fractureSystem, shelters = [], playerInsideShelter = false) {
     if (this.isDying) {
       this.fade = Math.max(0, this.fade - deltaTime * 2);
       return this.fade <= 0;
     }
 
-    const dx = player.x - this.x;
-    const dy = player.y - this.y;
-    const distance = Math.hypot(dx, dy) || 1;
-    this.x += (dx / distance) * this.speed * deltaTime;
-    this.y += (dy / distance) * this.speed * deltaTime;
-
     if (this.damageCooldown > 0) {
       this.damageCooldown -= deltaTime;
     }
 
-    if (distance < 18 && this.damageCooldown <= 0) {
-      player.takeDamage(10);
-      if (fractureSystem) {
-        fractureSystem.addStress(12);
+    if (this.state === 'scatter' && this.scatterTimer > 0) {
+      this.scatterTimer -= deltaTime;
+      this.#moveTowards(this.scatterTarget.x, this.scatterTarget.y, deltaTime, this.speed * 1.25);
+      if (Math.hypot(this.scatterTarget.x - this.x, this.scatterTarget.y - this.y) < 8 || this.scatterTimer <= 0) {
+        this.state = 'hunt';
       }
-      this.damageCooldown = 1.2;
+    } else {
+      const dx = player.x - this.x;
+      const dy = player.y - this.y;
+      const distance = Math.hypot(dx, dy) || 1;
+      const modifier = playerInsideShelter ? 0.55 : 1;
+      this.x += (dx / distance) * this.speed * modifier * deltaTime;
+      this.y += (dy / distance) * this.speed * modifier * deltaTime;
+    }
+
+    shelters.forEach((shelter) => {
+      if (shelter.keepOutside(this)) {
+        this.scatterAwayFrom(shelter.x, shelter.y, 0.6);
+      }
+    });
+
+    if (!playerInsideShelter) {
+      const distanceToPlayer = Math.hypot(player.x - this.x, player.y - this.y);
+      if (distanceToPlayer < 18 && this.damageCooldown <= 0) {
+        player.takeDamage(10);
+        if (fractureSystem) {
+          fractureSystem.addStress(12);
+        }
+        this.damageCooldown = 1.2;
+      }
     }
     return false;
   }
@@ -235,6 +264,25 @@ export class EnemyEcho {
     if (this.health <= 0) {
       this.isDying = true;
     }
+  }
+
+  scatterAwayFrom(originX, originY, durationMultiplier = 1) {
+    const angle = Math.random() * Math.PI * 2;
+    const distance = 180 + Math.random() * 140;
+    this.scatterTarget = {
+      x: originX + Math.cos(angle) * distance,
+      y: originY + Math.sin(angle) * distance,
+    };
+    this.state = 'scatter';
+    this.scatterTimer = (4 + Math.random() * 2) * durationMultiplier;
+  }
+
+  #moveTowards(targetX, targetY, deltaTime, speed) {
+    const dx = targetX - this.x;
+    const dy = targetY - this.y;
+    const distance = Math.hypot(dx, dy) || 1;
+    this.x += (dx / distance) * speed * deltaTime;
+    this.y += (dy / distance) * speed * deltaTime;
   }
 }
 

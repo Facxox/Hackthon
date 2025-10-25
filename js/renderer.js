@@ -108,6 +108,29 @@ export class Renderer {
     this.ctx.fillRect(x, y, width, height);
   }
 
+  drawSanctuary({ x, y, width, height, active, pulse, label, intensity = 0 }) {
+    const left = x - width / 2;
+    const top = y - height / 2;
+    const alphaBase = 0.18 + intensity * 0.35;
+    const pulseAlpha = active ? 0.3 : Math.sin(pulse * Math.PI * 2) * 0.05;
+    const fillAlpha = Math.min(0.6, Math.max(0.18, alphaBase + pulseAlpha));
+
+    this.ctx.save();
+    this.ctx.fillStyle = `rgba(96, 168, 255, ${fillAlpha})`;
+    this.ctx.fillRect(left, top, width, height);
+
+    this.ctx.lineWidth = active ? 2.5 : 1.5;
+    this.ctx.strokeStyle = active ? 'rgba(204, 234, 255, 0.9)' : 'rgba(136, 188, 255, 0.7)';
+    this.ctx.strokeRect(left, top, width, height);
+
+    if (label) {
+      this.ctx.font = '8px monospace';
+      this.ctx.fillStyle = 'rgba(226, 239, 255, 0.85)';
+      this.ctx.fillText(label, left + 4, top + 10);
+    }
+    this.ctx.restore();
+  }
+
   drawAnchor({ x, y, glow, visible, fade }) {
     if (this.sprites.anchor_fragmento) {
       if (visible) {

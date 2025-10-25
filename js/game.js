@@ -5,6 +5,7 @@ import { ChunkManager } from './mapGenerator.js';
 import { FractureSystem } from './fracture.js';
 import { CombatSystem } from './combat.js';
 import { EnemyEcho, MemoryEcho } from './npcs.js';
+import { Shelter } from './shelters.js';
 
 export class Game {
   constructor({
@@ -41,7 +42,9 @@ export class Game {
     this.anchors = [];
     this.enemies = [];
     this.memoryEchoes = [];
+  this.shelters = [];
     this.visibleChunks = [];
+  this.playerInsideShelter = false;
 
     this.lastTime = null;
     this.dialogueTimer = 0;
@@ -78,6 +81,7 @@ export class Game {
     this.storyManager = storyManager;
     this.storyManager.spawnAnclas(this);
     this.storyManager.spawnNPCs(this);
+    this.#refreshShelters();
   }
 
   registerNPC(npc) {
@@ -157,6 +161,7 @@ export class Game {
 
     this.updateAnchors(deltaTime);
     this.updateNPCs(deltaTime);
+  this.updateShelters(deltaTime);
     this.updateEnemies(deltaTime);
     this.updateEchoes(deltaTime);
     this.updateUi(deltaTime);
@@ -179,6 +184,7 @@ export class Game {
       }));
     });
 
+    this.shelters.forEach((shelter) => shelter.render(this.renderer));
     this.anchors.forEach((anchor) => anchor.render(this.renderer, this.player));
     this.npcs.forEach((npc) => npc.render(this.renderer));
     this.memoryEchoes.forEach((echo) => this.renderer.drawSprite({
@@ -252,7 +258,14 @@ export class Game {
     const chunk = validChunks[Math.floor(Math.random() * validChunks.length)];
     const spawnPoint = chunk.spawnPoints[Math.floor(Math.random() * chunk.spawnPoints.length)];
     if (!spawnPoint) return;
-    this.enemies.push(new EnemyEcho(spawnPoint));
+
+    let spawnPosition = { x: spawnPoint.x, y: spawnPoint.y };
+    const blockingShelter = this.shelters.find((shelter) => shelter.containsPoint(spawnPosition.x, spawnPosition.y));
+    if (blockingShelter) {
+      spawnPosition = blockingShelter.randomPerimeterPoint();
+    }
+
+    this.enemies.push(new EnemyEcho(spawnPosition));
   }
 
   spawnMemoryEcho() {
@@ -284,12 +297,76 @@ export class Game {
     });
   }
 
+  updateShelters(deltaTime) {
+    if (this.shelters.length === 0) {
+      this.playerInsideShelter = false;
+      return;
+    }
+
+    let playerEntered = false;
+
+    this.shelters.forEach((shelter) => {
+      const event = shelter.update(deltaTime, this.player);
+      if (event === 'enter') {
+        playerEntered = true;
+      }
+
+      this.enemies.forEach((enemy) => {
+        if (shelter.keepOutside(enemy) && typeof enemy.scatterAwayFrom === 'function') {
+          enemy.scatterAwayFrom(this.player.x, this.player.y);
+        }
+      });
+
+      this.memoryEchoes.forEach((echo) => {
+        if (shelter.containsPoint(echo.x, echo.y) && typeof echo.scatterAwayFrom === 'function') {
+          echo.scatterAwayFrom(this.player.x, this.player.y);
+        }
+      });
+    });
+
+    if (playerEntered) {
+      this.scatterHostiles();
+    }
+
+    this.playerInsideShelter = this.shelters.some((shelter) => shelter.playerInside);
+  }
+
   updateEnemies(deltaTime) {
-    this.enemies = this.enemies.filter((enemy) => !enemy.update(deltaTime, this.player, this.fracture));
+    this.enemies = this.enemies.filter((enemy) => !enemy.update(
+      deltaTime,
+      this.player,
+      this.fracture,
+      this.shelters,
+      this.playerInsideShelter,
+    ));
   }
 
   updateEchoes(deltaTime) {
-    this.memoryEchoes = this.memoryEchoes.filter((echo) => !echo.update(deltaTime, this.player, this.renderer));
+    this.memoryEchoes = this.memoryEchoes.filter((echo) => {
+      const expired = echo.update(deltaTime, this.player, this.renderer);
+      if (!expired) {
+        this.shelters.forEach((shelter) => {
+          if (shelter.containsPoint(echo.x, echo.y) && typeof echo.scatterAwayFrom === 'function') {
+            echo.scatterAwayFrom(this.player.x, this.player.y);
+          }
+        });
+      }
+      return !expired;
+    });
+  }
+
+  scatterHostiles() {
+    this.enemies.forEach((enemy) => {
+      if (typeof enemy.scatterAwayFrom === 'function') {
+        enemy.scatterAwayFrom(this.player.x, this.player.y);
+      }
+    });
+
+    this.memoryEchoes.forEach((echo) => {
+      if (typeof echo.scatterAwayFrom === 'function') {
+        echo.scatterAwayFrom(this.player.x, this.player.y);
+      }
+    });
   }
 
   updateUi(deltaTime) {
@@ -382,10 +459,12 @@ export class Game {
     this.npcs = [];
     this.enemies = [];
     this.memoryEchoes = [];
+    this.shelters = [];
     this.visibleChunks = [];
     this.dialogueTimer = 0;
     this.enemySpawnTimer = 3;
     this.flashTimer = 0;
+    this.playerInsideShelter = false;
     this.chunkManager.clearAll();
     if (this.dialogueBox) {
       this.dialogueBox.classList.add('hidden');
@@ -415,6 +494,57 @@ export class Game {
       });
       this.storyManager.spawnAnclas(this);
       this.storyManager.spawnNPCs(this);
+      this.#refreshShelters();
     }
+  }
+
+  #refreshShelters() {
+    const configs = this.#generateShelterConfigs();
+    if (!configs.length) {
+      this.shelters = [];
+      this.playerInsideShelter = false;
+      return;
+    }
+    this.shelters = configs.map((config, index) => new Shelter({
+      ...config,
+      label: config.label || `Refugio ${index + 1}`,
+    }));
+    this.playerInsideShelter = false;
+  }
+
+  #generateShelterConfigs() {
+    if (!this.anchors.length) {
+      return [
+        { x: -120, y: -60, width: 84, height: 64, label: 'Refugio 1' },
+        { x: 160, y: 80, width: 78, height: 70, label: 'Refugio 2' },
+      ];
+    }
+
+    const actAnchors = new Map();
+    this.anchors.forEach((anchor) => {
+      if (!anchor || !anchor.position) return;
+      const actKey = Number.isFinite(anchor.act) ? anchor.act : actAnchors.size;
+      if (!actAnchors.has(actKey)) {
+        actAnchors.set(actKey, anchor);
+      }
+    });
+
+    const referenceAnchors = Array.from(actAnchors.values()).slice(0, 3);
+    if (!referenceAnchors.length) {
+      return [];
+    }
+
+    return referenceAnchors.map((anchor, index) => {
+      const angleOffset = (index % 2 === 0 ? -1 : 1) * (Math.PI / 5);
+      const angle = (Math.PI * 0.65 * index) + angleOffset;
+      const radius = 100 + index * 45;
+      return {
+        x: anchor.position.x + Math.cos(angle) * radius,
+        y: anchor.position.y + Math.sin(angle) * radius,
+        width: 86 - index * 8,
+        height: 68 - Math.min(12, index * 4),
+        label: `Refugio ${index + 1}`,
+      };
+    });
   }
 }
