@@ -4,7 +4,7 @@ import { Renderer } from './renderer.js';
 import { ChunkManager } from './mapGenerator.js';
 import { FractureSystem } from './fracture.js';
 import { CombatSystem } from './combat.js';
-import { EnemyEcho, MemoryEcho, ShelterGuardian } from './npcs.js';
+import { EnemyEcho, MemoryEcho, ShelterGuardian, NPC } from './npcs.js';
 import { MazeMinigame } from './maze.js';
 import { Shelter } from './shelters.js';
 
@@ -69,7 +69,17 @@ export class Game {
     this.noteContinueButton = noteContinueButton || null;
     this.isNoteVisible = false;
     this.noteLockActive = false;
-  this.lastNoteIndexShown = -1;
+    this.pendingFinalConfession = false;
+    this.lastNoteIndexShown = -1;
+    this.finalSequenceActive = false;
+    this.finalDeathAnimating = false;
+    this.finalDeathTimer = 0;
+    this.finalDeathTriggered = false;
+    this.finalDialogueQueue = [];
+    this.finalDialogueIndex = 0;
+    this.finalSpeechBubble = null;
+    this.finalDeathOverlayActive = false;
+    this.finalDeathOverlayProgress = 0;
     this.mazeNotes = [
       {
         title: 'Bitácora I: La Llamada',
@@ -90,6 +100,8 @@ export class Game {
     this.enemySpawnTimer = 3;
     this.flashTimer = 0;
     this.assetsLoaded = false;
+
+  NPC.dialogueSuppressed = false;
 
     this.boundLoop = this.loop.bind(this);
 
@@ -195,6 +207,12 @@ export class Game {
   }
 
   update(deltaTime) {
+    if (this.finalSequenceActive) {
+      this.#updateFinalSequence(deltaTime);
+      this.updateUi(deltaTime);
+      return;
+    }
+
     if (this.maze && this.maze.isActive) {
       this.maze.update(deltaTime);
       this.updateUi(deltaTime);
@@ -232,7 +250,7 @@ export class Game {
 
     this.updateAnchors(deltaTime);
     this.updateNPCs(deltaTime);
-  this.updateShelters(deltaTime);
+    this.updateShelters(deltaTime);
     this.updateEnemies(deltaTime);
     this.updateEchoes(deltaTime);
     this.updateUi(deltaTime);
@@ -268,6 +286,15 @@ export class Game {
     this.enemies.forEach((enemy) => enemy.render(this.renderer));
     this.player.render(this.renderer);
 
+    if (this.finalSequenceActive && this.finalSpeechBubble && this.player) {
+      this.renderer.drawFloatingText({
+        x: this.player.x,
+        y: this.player.y - 26,
+        text: this.finalSpeechBubble.text,
+        color: this.finalSpeechBubble.color || '#f8d9ff',
+      });
+    }
+
     if (this.flashOverlay) {
       if (this.flashTimer > 0) {
         const alpha = Math.min(1, this.flashTimer / 0.5);
@@ -278,6 +305,10 @@ export class Game {
     }
 
     this.renderer.endFrame();
+
+    if (this.finalDeathOverlayActive) {
+      this.#renderFinalDeathOverlay();
+    }
   }
 
   handleInteraction() {
@@ -439,31 +470,9 @@ export class Game {
   }
 
   updateEchoes(deltaTime) {
-    this.memoryEchoes = this.memoryEchoes.filter((echo) => {
-      const expired = echo.update(deltaTime, this.player, this.renderer);
-      if (!expired) {
-        this.shelters.forEach((shelter) => {
-          if (shelter.containsPoint(echo.x, echo.y) && typeof echo.scatterAwayFrom === 'function') {
-            echo.scatterAwayFrom(this.player.x, this.player.y);
-          }
-        });
-      }
-      return !expired;
-    });
-  }
-
-  scatterHostiles() {
-    this.enemies.forEach((enemy) => {
-      if (typeof enemy.scatterAwayFrom === 'function') {
-        enemy.scatterAwayFrom(this.player.x, this.player.y);
-      }
-    });
-
-    this.memoryEchoes.forEach((echo) => {
-      if (typeof echo.scatterAwayFrom === 'function') {
-        echo.scatterAwayFrom(this.player.x, this.player.y);
-      }
-    });
+    this.memoryEchoes = this.memoryEchoes.filter(
+      (echo) => !echo.update(deltaTime, this.player, this.renderer),
+    );
   }
 
   updateUi(deltaTime) {
@@ -534,6 +543,7 @@ export class Game {
 
   returnToMenu() {
     if (this.state !== 'GAME_OVER') return;
+    this.#abortFinalSequence();
     this.hideGameOver();
     this.state = 'MENU';
     this.lastTime = null;
@@ -549,6 +559,7 @@ export class Game {
   }
 
   resetWorld() {
+    this.#abortFinalSequence();
     if (this.maze && this.maze.isActive) {
       this.activeGuardian = null;
       this.maze.close(false);
@@ -671,6 +682,20 @@ export class Game {
     }
   }
 
+  #updateFinalDeath(deltaTime) {
+    if (this.finalDeathTimer > 0) {
+      this.finalDeathTimer = Math.max(0, this.finalDeathTimer - deltaTime);
+      if (this.finalDeathTimer === 0 && !this.finalDeathTriggered) {
+        this.finalDeathTriggered = true;
+        this.finalDeathAnimating = false;
+        this.finalDeathOverlayProgress = 1;
+        this.finalSequenceActive = false;
+        this.finalSpeechBubble = null;
+        this.triggerGameOver();
+      }
+    }
+  }
+
   #onMazeResolved(success) {
     this.mazeActive = false;
     this.input.setMovementLocked(false);
@@ -712,6 +737,16 @@ export class Game {
     }
 
     this.activeGuardian = null;
+
+    if (
+      success &&
+      this.totalMazeLevels > 0 &&
+      this.mazeCompletions >= this.totalMazeLevels &&
+      !this.finalSequenceActive &&
+      !this.finalDeathTriggered
+    ) {
+      this.pendingFinalConfession = true;
+    }
   }
 
   #showMazeNote(index) {
@@ -760,6 +795,27 @@ export class Game {
     if (!this.mazeActive && this.input) {
       this.input.setMovementLocked(false);
     }
+
+    if (this.pendingFinalConfession && !this.finalSequenceActive) {
+      this.#beginFinalConfession();
+    }
+  }
+
+  scatterHostiles() {
+    const originX = this.player?.x ?? 0;
+    const originY = this.player?.y ?? 0;
+
+    this.enemies.forEach((enemy) => {
+      if (typeof enemy.scatterAwayFrom === 'function') {
+        enemy.scatterAwayFrom(originX, originY, 0.8);
+      }
+    });
+
+    this.memoryEchoes.forEach((echo) => {
+      if (typeof echo.scatterAwayFrom === 'function') {
+        echo.scatterAwayFrom(originX, originY);
+      }
+    });
   }
 
   #updateMazeCounter() {
@@ -776,6 +832,140 @@ export class Game {
     } else {
       this.mazeCounterElement.classList.remove('complete');
     }
+  }
+
+  #updateFinalSequence(deltaTime) {
+    if (this.finalDeathOverlayActive && this.finalDeathOverlayProgress < 1) {
+      this.finalDeathOverlayProgress = Math.min(1, this.finalDeathOverlayProgress + deltaTime / 1.8);
+    }
+
+    if (this.finalDeathAnimating) {
+      this.#updateFinalDeath(deltaTime);
+      return;
+    }
+
+    if (this.finalSpeechBubble) {
+      this.finalSpeechBubble.timer = Math.max(0, this.finalSpeechBubble.timer - deltaTime);
+      if (this.finalSpeechBubble.timer <= 0) {
+        this.finalSpeechBubble = null;
+      }
+    }
+
+    if (!this.finalSpeechBubble) {
+      this.#advanceFinalDialogue();
+    }
+  }
+
+  #beginFinalConfession() {
+    this.pendingFinalConfession = false;
+    this.finalSequenceActive = true;
+    this.finalDeathAnimating = false;
+    this.finalDeathTriggered = false;
+    this.finalDialogueQueue = [
+      { text: 'Clara... escuché tu voz en cada laberinto.', duration: 4 },
+      { text: 'Perdí el camino aquel día. Te dejé sola con el fuego.', duration: 4.5 },
+      { text: 'Prometí volver, pero preferí la botella y la rabia.', duration: 5 },
+      { text: 'No merezco seguir respirando este humo.', duration: 4.5 },
+      { text: 'Hoy me mato para dejarte en paz...', duration: 5 },
+    ];
+    this.finalDialogueIndex = -1;
+    this.finalSpeechBubble = null;
+    this.finalDeathOverlayActive = false;
+    this.finalDeathOverlayProgress = 0;
+    NPC.dialogueSuppressed = true;
+    this.#muteAllNpcDialogues();
+    if (this.input) {
+      this.input.setMovementLocked(true);
+    }
+    if (this.dialogueBox) {
+      this.dialogueBox.classList.add('hidden');
+      this.dialogueTimer = 0;
+    }
+    this.#advanceFinalDialogue();
+  }
+
+  #advanceFinalDialogue() {
+    this.finalDialogueIndex += 1;
+    const next = this.finalDialogueQueue[this.finalDialogueIndex];
+    if (!next) {
+      this.#startFinalDeath();
+      return;
+    }
+
+    const duration = Math.max(0.5, next.duration || 4);
+    this.finalSpeechBubble = {
+      text: next.text,
+      timer: duration,
+      color: next.color || '#f8d9ff',
+    };
+  }
+
+  #startFinalDeath() {
+    this.finalSpeechBubble = null;
+    if (this.dialogueBox) {
+      this.dialogueBox.classList.add('hidden');
+    }
+    this.finalDeathAnimating = true;
+    this.finalDeathTimer = 4;
+    this.finalDeathOverlayActive = true;
+    this.finalDeathOverlayProgress = 0;
+    this.#muteAllNpcDialogues();
+    if (this.flashOverlay) {
+      this.flashOverlay.style.opacity = '0';
+    }
+  }
+
+  #abortFinalSequence() {
+    NPC.dialogueSuppressed = false;
+    this.finalSequenceActive = false;
+    this.finalDeathAnimating = false;
+    this.finalDeathTimer = 0;
+    this.finalDeathTriggered = false;
+    this.pendingFinalConfession = false;
+    this.finalDialogueQueue = [];
+    this.finalDialogueIndex = 0;
+    this.finalSpeechBubble = null;
+    this.#clearFinalDeathOverlay();
+    this.#muteAllNpcDialogues();
+    if (this.input) {
+      this.input.setMovementLocked(false);
+    }
+  }
+
+  #renderFinalDeathOverlay() {
+    if (!this.fractureOverlay || !this.finalDeathOverlayActive) {
+      return;
+    }
+
+    const intensity = Math.min(1, this.finalDeathOverlayProgress);
+  const opacity = 0.3 + intensity * 0.7;
+  const innerAlpha = 0.45 + intensity * 0.5;
+  const outerAlpha = 0.8 + intensity * 0.2;
+
+    this.fractureOverlay.style.mixBlendMode = 'normal';
+    this.fractureOverlay.style.opacity = opacity.toFixed(2);
+  this.fractureOverlay.style.background = `radial-gradient(circle at center, rgba(220, 32, 32, ${innerAlpha.toFixed(2)}), rgba(90, 0, 0, ${outerAlpha.toFixed(2)}))`;
+    this.fractureOverlay.style.filter = 'blur(0px)';
+  }
+
+  #clearFinalDeathOverlay() {
+    this.finalDeathOverlayActive = false;
+    this.finalDeathOverlayProgress = 0;
+    if (this.fractureOverlay) {
+      this.fractureOverlay.style.opacity = '';
+      this.fractureOverlay.style.background = '';
+      this.fractureOverlay.style.mixBlendMode = '';
+      this.fractureOverlay.style.filter = '';
+    }
+  }
+
+  #muteAllNpcDialogues() {
+    if (!Array.isArray(this.npcs)) return;
+    this.npcs.forEach((npc) => {
+      if (!npc) return;
+      npc.dialogue = null;
+      npc.dialogueTimer = 0;
+    });
   }
 
   #refreshShelters() {

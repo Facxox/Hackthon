@@ -1,4 +1,6 @@
-class NPC {
+export class NPC {
+  static dialogueSuppressed = false;
+
   constructor({ x, y, speed = 20, color = '#8a8a8a', name = 'NPC', sprite = null }) {
     this.x = x;
     this.y = y;
@@ -14,6 +16,11 @@ class NPC {
   }
 
   update(deltaTime, context) {
+    if (NPC.dialogueSuppressed) {
+      this.dialogue = null;
+      this.dialogueTimer = 0;
+      return;
+    }
     if (this.dialogueTimer > 0) {
       this.dialogueTimer -= deltaTime;
       if (this.dialogueTimer <= 0) {
@@ -46,6 +53,11 @@ class NPC {
   }
 
   showDialogue(text, duration = 3.5) {
+    if (NPC.dialogueSuppressed) {
+      this.dialogue = null;
+      this.dialogueTimer = 0;
+      return;
+    }
     this.dialogue = text;
     this.dialogueTimer = duration;
   }
@@ -55,8 +67,8 @@ export class LaNina extends NPC {
   constructor(config) {
     super({ ...config, color: '#fbee7b', name: 'La Nina', sprite: 'la_nina' });
     this.reappearTimer = 0;
-    this.dialogueCooldown = 1.2 + Math.random() * 2;
-    this.silenceTimer = 0.5 + Math.random();
+  this.dialogueCooldown = 0.35 + Math.random() * 0.7;
+  this.silenceTimer = 0.18 + Math.random() * 0.35;
     this.phrases = [
       'Me mataste.',
       'Morí por tu culpa.',
@@ -88,15 +100,15 @@ export class LaNina extends NPC {
       if (this.dialogueTimer <= 0 && this.dialogueCooldown <= 0) {
         const phrase = this.phrases[Math.floor(Math.random() * this.phrases.length)];
         this.showDialogue(phrase, 3.8);
-        this.dialogueCooldown = 3 + Math.random() * 2.2;
-        this.silenceTimer = 1 + Math.random() * 1.4;
+        this.dialogueCooldown = 0.9 + Math.random() * 0.9;
+        this.silenceTimer = 0.4 + Math.random() * 0.7;
       } else if (this.dialogueTimer <= 0 && this.silenceTimer <= 0) {
-        this.dialogueCooldown = 2 + Math.random() * 2.4;
-        this.silenceTimer = 1 + Math.random() * 1.4;
+        this.dialogueCooldown = 0.7 + Math.random() * 0.8;
+        this.silenceTimer = 0.35 + Math.random() * 0.6;
       }
     } else {
-      this.dialogueCooldown = Math.max(this.dialogueCooldown, 1.8);
-      this.silenceTimer = Math.max(this.silenceTimer, 1.2);
+      this.dialogueCooldown = Math.max(this.dialogueCooldown, 0.6);
+      this.silenceTimer = Math.max(this.silenceTimer, 0.5);
     }
   }
 
@@ -525,4 +537,3 @@ export class ShelterGuardian extends NPC {
   }
 }
 
-export { NPC };
