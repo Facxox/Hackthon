@@ -1,0 +1,117 @@
+{
+  "fixed": {
+    "premise": "Arturo atrapado en su mente tras brote psicotico",
+    "trauma": "Accidente domestico - murieron esposa e hija",
+    "objective": "Reconstruir memorias y aceptar culpa"
+  },
+  "variable": {
+    "traumaCause": "estufa",
+    "profession": "ingeniero",
+    "wifeName": "Marina",
+    "daughterName": "Emma",
+    "daughterAge": "6"
+  },
+  "npcs": {
+    "laNina": {
+      "fixed": {
+        "role": "Guia silenciosa",
+        "appearance": "Vestido amarillo, no habla",
+        "behavior": "Aparece/desaparece, rie o llora"
+      },
+      "variable": {
+        "physicalDetails": "Cabello negro, ojos grisaceos",
+        "laughType": "Una risa baja que termina en sollozo"
+      },
+      "dialogues": {
+        "act1": "Se sienta en una esquina mojada y mira al vacio.",
+        "act3": "Una luz roja la envuelve mientras abraza a Arturo antes de desvanecerse."
+      }
+    },
+    "elCritico": {
+      "fixed": {
+        "role": "Antagonista - la culpa",
+        "appearance": "Sombra parecida a Arturo",
+        "voice": "Voz de Arturo distorsionada",
+        "cannotBeKilled": true
+      },
+      "variable": {
+        "tone": "sarcastico"
+      },
+      "dialogues": {
+        "act1_whispers": [
+          "Sabes que fue tu culpa, aunque intentes olvidarlo.",
+          "Tu la dejaste sola. Recuerdas?"
+        ],
+        "act2_chase": [
+          "Otra vez dejaste la estufa sin revisar?",
+          "Dejaste a Marina y Emma esperando en vano."
+        ],
+        "act3_final": "Mirame bien: soy la parte de ti que nunca perdonara lo que hiciste."
+      }
+    },
+    "losBurocratas": {
+      "fixed": {
+        "role": "Medicos del mundo real",
+        "appearance": "Sin rostro, batas blancas",
+        "behavior": "Intentan calmar a Arturo"
+      },
+      "variable": {
+        "phrases": [
+          "El sujeto muestra resistencia",
+          "Aumenta la respuesta autonomica, mantener sedacion.",
+          "Informe: paciente Arturo R. repite el incidente sin aceptar culpa."
+        ]
+      }
+    }
+  },
+  "anclas": [
+    {
+      "id": "ticket_cine",
+      "type": "papel",
+      "act": 1,
+      "fixed": {
+        "effect": "Estabiliza mundo 5 segundos"
+      },
+      "variable": {
+        "movieName": "El Faro",
+        "audioText": "Marina: \"Arturo, no olvides apagar la estufa.\""
+      }
+    },
+    {
+      "id": "dibujo_infantil",
+      "type": "papel",
+      "act": 2,
+      "variable": {
+        "content": "Una casa con humo negro",
+        "message": "Para papa, te espero despierta.",
+        "audioText": "Emma: \"Papi, prometiste volver temprano.\""
+      }
+    },
+    {
+      "id": "informe_policial",
+      "type": "documento",
+      "act": 3,
+      "variable": {
+        "cause": "Fuga de gas por hornilla abierta",
+        "date": "03/11/2015"
+      }
+    }
+  ],
+  "worldEffects": {
+    "act1": {
+      "coherence": "80-100",
+      "atmosphere": "Ciudad lluviosa, arquitectura opresiva",
+      "distortions": "Minimas"
+    },
+    "act2": {
+      "coherence": "30-60",
+      "atmosphere": "Surrealista, gravedad inestable",
+      "distortions": "Maximas"
+    },
+    "act3": {
+      "coherence": "0-30",
+      "atmosphere": "Un solo lugar en loop",
+      "location": "cocina"
+    }
+  }
+}

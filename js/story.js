@@ -80,6 +80,7 @@ export class StoryManager {
     } catch (error) {
       console.warn('No se pudo cargar plantilla, usando preset local.', error);
       this.story = this.#presets()[0];
+      this.#cacheStory(this.story);
       this.#prepareAnchors();
       return;
     }
@@ -87,27 +88,43 @@ export class StoryManager {
     const prompt = this.#buildPrompt(template);
 
     try {
-      // Intento de delegar la expansion del template a un endpoint externo (Claude/GPT).
-      const response = await fetch('/api/generate-story', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt }),
-      });
-
-      if (response.ok) {
-        const raw = await response.text();
-        const parsed = this.#parseStoryResponse(raw);
-        if (parsed) {
-          this.story = parsed;
-        } else {
-          this.story = this.#fillTemplate(template);
-        }
-      } else {
-        this.story = this.#fillTemplate(template);
+      const generated = await this.#fetchStoryFromGemini(prompt);
+      if (generated) {
+        this.story = generated;
+        this.#cacheStory(this.story);
+        console.log('Historia generada por IA:', this.story);
+        console.log('Historia generada por IA guardada en localStorage.');
+        this.#prepareAnchors();
+        return;
       }
     } catch (error) {
-      console.warn('Fallo generando historia dinamica, usando plantilla local.', error);
+      console.warn('Fallo generando historia dinamica con Gemini.', error);
+    }
+
+    const storedStory = this.#loadLocalStory();
+    if (storedStory) {
+      console.info('Usando historia almacenada en localStorage como respaldo.');
+      this.story = storedStory;
+      this.#prepareAnchors();
+      return;
+    }
+
+    const cachedStory = await this.#loadCachedStory();
+    if (cachedStory) {
+      console.info('Usando data/generatedStory.json como respaldo.');
+      this.story = cachedStory;
+      this.#cacheStory(this.story);
+      this.#prepareAnchors();
+      return;
+    }
+
+    try {
+      this.story = this.#fillTemplate(template);
+      this.#cacheStory(this.story);
+    } catch (error) {
+      console.warn('Fallo completando plantilla, usando preset local.', error);
       this.story = this.#presets()[Math.floor(Math.random() * 3)];
+      this.#cacheStory(this.story);
     }
     this.#prepareAnchors();
   }
@@ -138,6 +155,225 @@ export class StoryManager {
 
   spawnAnclas(game) {
     this.anchors.forEach((anchor) => game.registerAnchor(anchor));
+  }
+
+  async #loadCachedStory() {
+    try {
+      const response = await fetch('data/generatedStory.json', { cache: 'no-store' });
+      if (!response.ok) {
+        return null;
+      }
+      const data = await response.json();
+      if (data && Array.isArray(data.anclas) && data.anclas.length) {
+        return data;
+      }
+    } catch (error) {
+      console.info('No se encontro historia local generada.', error);
+    }
+    return null;
+  }
+
+  #loadLocalStory() {
+    if (typeof window === 'undefined') {
+      return null;
+    }
+    try {
+      const raw = window.localStorage.getItem('generatedStory');
+      if (!raw) {
+        return null;
+      }
+      const parsed = JSON.parse(raw);
+      if (parsed && Array.isArray(parsed.anclas) && parsed.anclas.length) {
+        return parsed;
+      }
+    } catch (error) {
+      console.info('No se pudo leer historia almacenada localmente.', error);
+    }
+    return null;
+  }
+
+  #cacheStory(story) {
+    if (typeof window === 'undefined' || !story) {
+      return;
+    }
+    try {
+      window.localStorage.setItem('generatedStory', JSON.stringify(story));
+    } catch (error) {
+      console.info('No se pudo guardar historia en localStorage.', error);
+    }
+  }
+
+  async #fetchStoryFromGemini(prompt) {
+    if (typeof window === 'undefined') {
+      return null;
+    }
+
+  const apiKey = await this.#getGeminiApiKey();
+    if (!apiKey) {
+      console.warn('No se encontro GEMINI_API_KEY. Define window.GEMINI_API_KEY o localStorage.geminiApiKey.');
+      return null;
+    }
+
+  const model = this.#getGeminiModel();
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    const payload = {
+      contents: [
+        {
+          role: 'user',
+          parts: [{ text: prompt }],
+        },
+      ],
+      generationConfig: {
+        temperature: 0.7,
+        topP: 0.95,
+        topK: 40,
+      },
+    };
+
+    console.log(`Llamando a Gemini (${model}) directamente desde el cliente...`);
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const body = await response.text();
+      console.warn(`Gemini respondio ${response.status}:`, body);
+      return null;
+    }
+
+    const data = await response.json();
+    const rawText = this.#extractTextFromGemini(data);
+    if (!rawText) {
+      console.warn('Gemini no devolvio texto legible.');
+      return null;
+    }
+
+    const parsed = this.#parseStoryResponse(rawText);
+    if (!parsed) {
+      console.warn('No se pudo parsear la respuesta de Gemini.');
+    }
+    return parsed;
+  }
+
+  async #getGeminiApiKey() {
+    if (typeof window === 'undefined') {
+      return null;
+    }
+    const candidates = [
+      window.GEMINI_API_KEY,
+      window.__GEMINI_API_KEY__,
+      window.GEMINI_DEFAULT_API_KEY,
+      this.#readGeminiKeyFromMeta(),
+      this.#readGeminiKeyFromLocalStorage(),
+    ];
+
+    for (const candidate of candidates) {
+      if (candidate && typeof candidate === 'string') {
+        return candidate.trim();
+      }
+    }
+
+    const provided = await this.#askGeminiKeyInteractively();
+    if (provided) {
+      return provided.trim();
+    }
+
+    console.warn('No se encontro GEMINI_API_KEY. Define window.GEMINI_API_KEY, localStorage.geminiApiKey o agrega <meta name="gemini-api-key">.');
+    return null;
+  }
+
+  #extractTextFromGemini(data) {
+    if (!data || !Array.isArray(data.candidates)) {
+      return null;
+    }
+    for (const candidate of data.candidates) {
+      const parts = candidate.content?.parts;
+      if (!parts) {
+        continue;
+      }
+      for (const part of parts) {
+        if (typeof part.text === 'string') {
+          return part.text;
+        }
+      }
+    }
+    return null;
+  }
+
+  #getGeminiModel() {
+    if (typeof window === 'undefined') {
+      return 'gemini-2.5-flash';
+    }
+
+    const sources = [
+      window.GEMINI_MODEL,
+      window.__GEMINI_MODEL__,
+      window.GEMINI_DEFAULT_MODEL,
+      this.#readGeminiModelFromLocalStorage(),
+    ];
+
+    for (const source of sources) {
+      if (source && typeof source === 'string' && source.trim()) {
+        return source.trim();
+      }
+    }
+
+  return 'gemini-2.5-flash';
+  }
+
+  #readGeminiModelFromLocalStorage() {
+    if (typeof window === 'undefined') {
+      return null;
+    }
+    try {
+      return window.localStorage.getItem('geminiModel');
+    } catch (error) {
+      console.info('No se pudo leer geminiModel de localStorage.', error);
+      return null;
+    }
+  }
+
+  #readGeminiKeyFromMeta() {
+    if (typeof document === 'undefined') {
+      return null;
+    }
+    const meta = document.querySelector('meta[name="gemini-api-key"]');
+    return meta?.content || null;
+  }
+
+  #readGeminiKeyFromLocalStorage() {
+    if (typeof window === 'undefined') {
+      return null;
+    }
+    try {
+      const stored = window.localStorage.getItem('geminiApiKey');
+      return stored || null;
+    } catch (error) {
+      console.info('No se pudo leer geminiApiKey de localStorage.', error);
+      return null;
+    }
+  }
+
+  async #askGeminiKeyInteractively() {
+    if (typeof window === 'undefined' || typeof window.prompt !== 'function') {
+      return null;
+    }
+    const wantsToSet = window.confirm('No hay GEMINI_API_KEY configurada. ¿Quieres introducirla ahora?');
+    if (!wantsToSet) {
+      return null;
+    }
+    const key = window.prompt('Introduce tu GEMINI_API_KEY. Se guardara en localStorage para proximas sesiones.');
+    if (key && key.trim()) {
+      try {
+        window.localStorage.setItem('geminiApiKey', key.trim());
+      } catch (error) {
+        console.info('No se pudo guardar la clave en localStorage.', error);
+      }
+      return key.trim();
+    }
+    return null;
   }
 
   #prepareAnchors() {
