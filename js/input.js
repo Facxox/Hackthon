@@ -5,7 +5,6 @@ export class InputHandler {
     this.interactPressed = false;
     this.touchState = { x: 0, y: 0 };
     this.#bindEvents();
-    this.#createTouchControls();
   }
 
   getDirection() {
@@ -71,50 +70,5 @@ export class InputHandler {
     }, { passive: true });
   }
 
-  #createTouchControls() {
-    const controls = document.createElement('div');
-    controls.className = 'mobile-controls';
-
-    const directions = [
-      { label: '↑', x: 0, y: -1 },
-      { label: '↓', x: 0, y: 1 },
-      { label: '←', x: -1, y: 0 },
-      { label: '→', x: 1, y: 0 },
-    ];
-
-    directions.forEach((dir) => {
-      const btn = document.createElement('button');
-      btn.className = 'mobile-button';
-      btn.textContent = dir.label;
-      btn.addEventListener('touchstart', (event) => {
-        event.preventDefault();
-        this.touchState = { x: dir.x, y: dir.y };
-      });
-      btn.addEventListener('touchend', (event) => {
-        event.preventDefault();
-        this.touchState = { x: 0, y: 0 };
-      });
-      controls.appendChild(btn);
-    });
-
-    const interactBtn = document.createElement('button');
-    interactBtn.className = 'mobile-button';
-    interactBtn.textContent = 'E';
-    interactBtn.addEventListener('touchstart', (event) => {
-      event.preventDefault();
-      this.interactPressed = true;
-    });
-
-    const attackBtn = document.createElement('button');
-    attackBtn.className = 'mobile-button';
-    attackBtn.textContent = '⚔';
-    attackBtn.addEventListener('touchstart', (event) => {
-      event.preventDefault();
-      this.attackPressed = true;
-    });
-
-    controls.append(interactBtn, attackBtn);
-
-    document.body.appendChild(controls);
-  }
+  #createTouchControls() {}
 }

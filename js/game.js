@@ -7,11 +7,27 @@ import { CombatSystem } from './combat.js';
 import { EnemyEcho, MemoryEcho } from './npcs.js';
 
 export class Game {
-  constructor({ canvas, dialogueBox, fractureOverlay, hpFill, flashOverlay }) {
+  constructor({
+    canvas,
+    dialogueBox,
+    fractureOverlay,
+    hpFill,
+    flashOverlay,
+    gameOverScreen,
+    restartButton,
+    returnMenuButton,
+    loadingScreen,
+    startButton,
+  }) {
     this.canvas = canvas;
     this.dialogueBox = dialogueBox;
     this.hpFill = hpFill;
     this.flashOverlay = flashOverlay;
+    this.gameOverScreen = gameOverScreen;
+    this.restartButton = restartButton;
+    this.returnMenuButton = returnMenuButton;
+    this.loadingScreen = loadingScreen;
+    this.startButton = startButton;
     this.renderer = new Renderer(canvas, fractureOverlay);
     this.input = new InputHandler();
     this.player = new Player(0, 0);
@@ -34,6 +50,22 @@ export class Game {
     this.assetsLoaded = false;
 
     this.boundLoop = this.loop.bind(this);
+
+    if (this.restartButton) {
+      this.restartButton.addEventListener('click', () => {
+        if (this.state === 'GAME_OVER') {
+          this.restart();
+        }
+      });
+    }
+
+    if (this.returnMenuButton) {
+      this.returnMenuButton.addEventListener('click', () => {
+        if (this.state === 'GAME_OVER') {
+          this.returnToMenu();
+        }
+      });
+    }
   }
 
   async loadAssets() {
@@ -58,6 +90,15 @@ export class Game {
 
   start() {
     if (this.state === 'PLAYING') return;
+    if (this.state === 'GAME_OVER') return;
+    this.hideGameOver();
+    if (this.state === 'MENU') {
+      this.resetWorld();
+    }
+    if (this.loadingScreen) {
+      this.loadingScreen.classList.remove('visible');
+      this.loadingScreen.style.display = 'none';
+    }
     this.state = 'PLAYING';
     this.lastTime = performance.now();
     requestAnimationFrame(this.boundLoop);
@@ -81,6 +122,9 @@ export class Game {
     this.lastTime = timestamp;
 
     this.update(deltaTime);
+    if (this.state !== 'PLAYING') {
+      return;
+    }
     this.render();
 
     requestAnimationFrame(this.boundLoop);
@@ -91,6 +135,20 @@ export class Game {
     this.handleSpawning(deltaTime);
 
     this.player.update(deltaTime, this.input, this.combat, this.enemies, this.fracture);
+    const stressDamage = this.fracture.consumePendingHealthDamage();
+    if (stressDamage > 0) {
+      this.player.takeDamage(Math.max(1, Math.round(stressDamage)));
+      this.flashTimer = Math.max(this.flashTimer, 0.35);
+    }
+    const stressMessages = this.fracture.consumePendingMessages();
+    if (stressMessages.length > 0) {
+      this.showDialogue(stressMessages[stressMessages.length - 1], 2.4);
+    }
+    if (this.player.isDead()) {
+      this.updateUi(deltaTime);
+      this.triggerGameOver();
+      return;
+    }
     this.renderer.setCamera({ x: this.player.x, y: this.player.y });
 
     if (this.input.consumeInteraction()) {
@@ -158,9 +216,10 @@ export class Game {
     });
 
     if (closest && minDistance <= 28) {
+      this.fracture.registerInteraction(8);
       const audioText = closest.interact(this.player, this.fracture);
       if (audioText) {
-        this.showDialogue(audioText, 2.5);
+        this.showDialogue(audioText, 4.5);
         this.flashTimer = 0.5;
       }
     }
@@ -256,5 +315,106 @@ export class Game {
     this.dialogueBox.textContent = text;
     this.dialogueBox.classList.remove('hidden');
     this.dialogueTimer = duration;
+  }
+
+  triggerGameOver() {
+    if (this.state === 'GAME_OVER') return;
+    this.state = 'GAME_OVER';
+    if (this.dialogueBox) {
+      this.dialogueBox.classList.add('hidden');
+    }
+    if (this.gameOverScreen) {
+      this.gameOverScreen.classList.remove('hidden');
+    }
+    if (this.flashOverlay) {
+      this.flashOverlay.style.opacity = '0';
+    }
+    if (this.startButton) {
+      this.startButton.disabled = true;
+      this.startButton.classList.remove('enabled');
+    }
+  }
+
+  hideGameOver() {
+    if (this.gameOverScreen) {
+      this.gameOverScreen.classList.add('hidden');
+    }
+  }
+
+  restart() {
+    if (this.state !== 'GAME_OVER') return;
+    this.hideGameOver();
+    this.resetWorld();
+    if (this.loadingScreen) {
+      this.loadingScreen.classList.remove('visible');
+      this.loadingScreen.style.display = 'none';
+    }
+    if (this.startButton) {
+      this.startButton.disabled = true;
+      this.startButton.classList.remove('enabled');
+    }
+    this.state = 'PLAYING';
+    this.lastTime = performance.now();
+    requestAnimationFrame(this.boundLoop);
+  }
+
+  returnToMenu() {
+    if (this.state !== 'GAME_OVER') return;
+    this.hideGameOver();
+    this.state = 'MENU';
+    this.lastTime = null;
+    if (this.loadingScreen) {
+      this.loadingScreen.classList.add('visible');
+      this.loadingScreen.style.display = 'flex';
+    }
+    if (this.startButton) {
+      this.startButton.disabled = false;
+      this.startButton.removeAttribute('disabled');
+      this.startButton.classList.add('enabled');
+    }
+  }
+
+  resetWorld() {
+    this.player = new Player(0, 0);
+    this.fracture = new FractureSystem();
+    this.combat = new CombatSystem();
+    this.anchors = [];
+    this.npcs = [];
+    this.enemies = [];
+    this.memoryEchoes = [];
+    this.visibleChunks = [];
+    this.dialogueTimer = 0;
+    this.enemySpawnTimer = 3;
+    this.flashTimer = 0;
+    this.chunkManager.clearAll();
+    if (this.dialogueBox) {
+      this.dialogueBox.classList.add('hidden');
+    }
+    if (this.hpFill) {
+      this.hpFill.style.width = '100%';
+    }
+    if (this.flashOverlay) {
+      this.flashOverlay.style.opacity = '0';
+    }
+    if (this.fractureOverlay) {
+      this.fractureOverlay.style.opacity = '0';
+      this.fractureOverlay.style.filter = 'none';
+    }
+    this.renderer.setCamera({ x: 0, y: 0 });
+    this.renderer.setFractureEffects({
+      shakeIntensity: 0,
+      overlayIntensity: 0,
+      blur: 0,
+      chromaticOffset: 0,
+    });
+
+    if (this.storyManager) {
+      this.storyManager.anchors.forEach((anchor) => {
+        anchor.isCollected = false;
+        anchor.fade = 1;
+      });
+      this.storyManager.spawnAnclas(this);
+      this.storyManager.spawnNPCs(this);
+    }
   }
 }

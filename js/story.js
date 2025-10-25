@@ -146,10 +146,38 @@ export class StoryManager {
       { x: 140, y: 40 },
       { x: -160, y: 180 },
     ];
-    this.anchors = this.story.anclas.map((data, index) => new Anchor({
+
+    const baseAnchors = this.story.anclas.map((data, index) => new Anchor({
       ...data,
-      position: actsPositions[index] || { x: Math.random() * 200 - 100, y: Math.random() * 200 - 100 },
+      position: actsPositions[index] || this.#randomWorldPosition(index),
     }));
+
+    const desiredTotal = Math.max(6, baseAnchors.length + 3);
+    const extraAnchors = [];
+    for (let i = baseAnchors.length; i < desiredTotal; i += 1) {
+      const source = this.#clone(this.story.anclas[i % this.story.anclas.length]);
+      const variable = this.#clone(source.variable || {});
+      const newId = `${source.id}_eco_${i}`;
+      variable.audioText = `${variable.audioText || '...'} (eco)`;
+      extraAnchors.push(new Anchor({
+        ...source,
+        id: newId,
+        act: source.act ?? ((i % 3) + 1),
+        position: this.#randomWorldPosition(i + 3),
+        variable,
+      }));
+    }
+
+    this.anchors = [...baseAnchors, ...extraAnchors];
+  }
+
+  #randomWorldPosition(seedIndex) {
+    const angle = (seedIndex * 137.5) * (Math.PI / 180);
+    const radius = 140 + (seedIndex % 6) * 60;
+    return {
+      x: Math.cos(angle) * radius,
+      y: Math.sin(angle) * radius,
+    };
   }
 
   #fillTemplate(template) {

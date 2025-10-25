@@ -8,6 +8,9 @@ const dialogueBox = document.getElementById('dialogueBox');
 const fractureOverlay = document.getElementById('fractureOverlay');
 const hpFill = document.getElementById('hpFill');
 const flashOverlay = document.getElementById('flashOverlay');
+const gameOverScreen = document.getElementById('gameOverScreen');
+const restartButton = document.getElementById('restartButton');
+const returnMenuButton = document.getElementById('returnMenuButton');
 
 const game = new Game({
   canvas,
@@ -15,6 +18,11 @@ const game = new Game({
   fractureOverlay,
   hpFill,
   flashOverlay,
+  gameOverScreen,
+  restartButton,
+  returnMenuButton,
+  loadingScreen,
+  startButton,
 });
 
 const storyManager = new StoryManager();
@@ -27,17 +35,21 @@ async function bootstrap() {
     ]);
     game.attachStory(storyManager);
     startButton.disabled = false;
+    startButton.removeAttribute('disabled');
     startButton.classList.add('enabled');
   } catch (error) {
     console.error('Error cargando historia', error);
     startButton.disabled = false;
+    startButton.removeAttribute('disabled');
     startButton.classList.add('enabled');
   }
 }
 
 startButton.addEventListener('click', () => {
   loadingScreen.classList.remove('visible');
+  loadingScreen.style.display = 'none';
   startButton.disabled = true;
+  startButton.classList.remove('enabled');
   game.start();
 });
 
